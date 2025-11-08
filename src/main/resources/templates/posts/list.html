@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="UTF-8">
+	<title>게시판</title>
+	<link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<main class="container">
+	<header class="page-header">
+		<div>
+			<p class="eyebrow">Spring Boot Demo</p>
+			<h1>게시판</h1>
+			<p class="subtitle">단순한 CRUD 게시판 샘플</p>
+		</div>
+		<a class="btn primary" th:href="@{/posts/new}">새 글 쓰기</a>
+	</header>
+
+	<div th:if="${message}" class="flash success" th:text="${message}"></div>
+
+	<div class="card">
+		<table>
+			<thead>
+			<tr>
+				<th>제목</th>
+				<th>작성자</th>
+				<th>작성일</th>
+			</tr>
+			</thead>
+			<tbody>
+			<tr th:if="${#lists.isEmpty(posts)}">
+				<td colspan="3" class="empty">등록된 게시글이 없습니다.</td>
+			</tr>
+			<tr th:each="post : ${posts}">
+				<td>
+					<a th:href="@{|/posts/${post.id}|}" th:text="${post.title}"></a>
+				</td>
+				<td th:text="${post.author}"></td>
+				<td th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm')}"></td>
+			</tr>
+			</tbody>
+		</table>
+	</div>
+</main>
+</body>
+</html>

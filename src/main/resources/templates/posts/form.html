@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="UTF-8">
+	<title th:text="${mode == 'edit'} ? '게시글 수정' : '새 게시글 작성'">게시글 폼</title>
+	<link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<main class="container">
+	<div class="page-header">
+		<div>
+			<a class="back-link" th:href="@{/posts}">&larr; 목록으로</a>
+			<h1 th:text="${mode == 'edit'} ? '게시글 수정' : '새 게시글 작성'">게시글 폼</h1>
+		</div>
+	</div>
+
+	<div class="card">
+		<form th:action="${mode == 'edit'} ? @{/posts/{id}(id=${postId})} : @{/posts}"
+		      th:object="${postForm}"
+		      method="post"
+		      class="form stacked">
+			<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+
+			<label>
+				<span>제목</span>
+				<input type="text" th:field="*{title}" placeholder="제목을 입력하세요">
+				<small class="error" th:if="${#fields.hasErrors('title')}" th:errors="*{title}">제목 오류</small>
+			</label>
+
+			<label>
+				<span>작성자</span>
+				<input type="text" th:field="*{author}" placeholder="이름">
+				<small class="error" th:if="${#fields.hasErrors('author')}" th:errors="*{author}">작성자 오류</small>
+			</label>
+
+			<label>
+				<span>내용</span>
+				<textarea rows="10" th:field="*{content}" placeholder="내용을 입력하세요"></textarea>
+				<small class="error" th:if="${#fields.hasErrors('content')}" th:errors="*{content}">내용 오류</small>
+			</label>
+
+			<div class="form-actions">
+				<button class="btn primary" type="submit"
+				        th:text="${mode == 'edit'} ? '수정 완료' : '등록하기'">등록하기</button>
+				<a class="btn ghost" th:href="@{/posts}">취소</a>
+			</div>
+		</form>
+	</div>
+</main>
+</body>
+</html>
