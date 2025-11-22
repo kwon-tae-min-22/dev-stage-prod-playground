@@ -19,13 +19,15 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import com.example.demo.config.SecurityConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.util.ReflectionUtils;
+import org.springframework.context.annotation.Bean;
+import org.mockito.Mockito;
+import com.example.demo.config.SecurityConfig;
 
 @WebMvcTest(BoardController.class)
 @Import(SecurityConfig.class)
@@ -34,7 +36,7 @@ class BoardControllerTest {
 	@Autowired
 	private MockMvc mockMvc;
 
-	@MockBean
+	@Autowired
 	private PostService postService;
 
 	@Test
@@ -111,5 +113,13 @@ class BoardControllerTest {
 		var field = ReflectionUtils.findField(Post.class, fieldName);
 		ReflectionUtils.makeAccessible(field);
 		ReflectionUtils.setField(field, target, value);
+	}
+
+	@TestConfiguration
+	static class MockBeans {
+		@Bean
+		PostService postService() {
+			return Mockito.mock(PostService.class);
+		}
 	}
 }
