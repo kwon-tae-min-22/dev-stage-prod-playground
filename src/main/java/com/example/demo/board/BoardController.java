@@ -1,5 +1,6 @@
 package com.example.demo.board;
 
+import java.util.UUID;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -74,7 +75,7 @@ public class BoardController {
 		description = "ID로 게시글을 조회해 상세 화면에 노출합니다."
 	)
 	@GetMapping("/posts/{id}")
-	public String detail(@PathVariable Long id, Model model) {
+	public String detail(@PathVariable UUID id, Model model) {
 		model.addAttribute("post", postService.findById(id));
 		return "posts/detail";
 	}
@@ -84,7 +85,7 @@ public class BoardController {
 		description = "기존 게시글 데이터를 포함한 수정 폼을 제공합니다."
 	)
 	@GetMapping("/posts/{id}/edit")
-	public String editForm(@PathVariable Long id, Model model) {
+	public String editForm(@PathVariable UUID id, Model model) {
 		Post post = postService.findById(id);
 		model.addAttribute("postForm", new PostForm(post.getTitle(), post.getAuthor(), post.getContent()));
 		model.addAttribute("mode", "edit");
@@ -97,7 +98,7 @@ public class BoardController {
 		description = "입력한 내용으로 게시글을 업데이트하고 상세 페이지로 이동합니다."
 	)
 	@PostMapping("/posts/{id}")
-	public String update(@PathVariable Long id,
+	public String update(@PathVariable UUID id,
 		@Valid @ModelAttribute("postForm") PostForm form,
 		BindingResult bindingResult,
 		RedirectAttributes redirectAttributes,
@@ -118,7 +119,7 @@ public class BoardController {
 		description = "게시글을 삭제하고 목록 페이지로 이동합니다."
 	)
 	@PostMapping("/posts/{id}/delete")
-	public String delete(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+	public String delete(@PathVariable UUID id, RedirectAttributes redirectAttributes) {
 		postService.delete(id);
 		redirectAttributes.addFlashAttribute("message", "게시글이 삭제되었습니다.");
 		return "redirect:/posts";

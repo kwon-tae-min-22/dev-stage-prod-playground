@@ -14,8 +14,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import com.example.demo.config.SecurityConfig;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,7 +39,7 @@ class BoardControllerTest {
 
 	@Test
 	void listRendersPostsTemplate() throws Exception {
-		given(postService.findAll()).willReturn(List.of(samplePost(1L)));
+		given(postService.findAll()).willReturn(List.of(samplePost(UUID.randomUUID())));
 
 		mockMvc.perform(get("/posts"))
 			.andExpect(status().isOk())
@@ -47,9 +49,10 @@ class BoardControllerTest {
 
 	@Test
 	void showDetailDisplaysPost() throws Exception {
-		given(postService.findById(1L)).willReturn(samplePost(1L));
+		UUID id = UUID.randomUUID();
+		given(postService.findById(id)).willReturn(samplePost(id));
 
-		mockMvc.perform(get("/posts/1"))
+		mockMvc.perform(get("/posts/{id}", id))
 			.andExpect(status().isOk())
 			.andExpect(view().name("posts/detail"))
 			.andExpect(model().attributeExists("post"));
@@ -58,7 +61,7 @@ class BoardControllerTest {
 	@Test
 	void createPostValidDataRedirectsToList() throws Exception {
 		given(postService.create(any(PostForm.class)))
-			.willReturn(samplePost(1L));
+			.willReturn(samplePost(UUID.randomUUID()));
 
 		mockMvc.perform(post("/posts")
 				.param("title", "제목")
@@ -85,16 +88,19 @@ class BoardControllerTest {
 
 	@Test
 	void deletePostRedirectsToList() throws Exception {
-		mockMvc.perform(post("/posts/1/delete").with(csrf()))
+		UUID id = UUID.randomUUID();
+
+		mockMvc.perform(post("/posts/{id}/delete", id).with(csrf()))
 			.andExpect(status().is3xxRedirection())
 			.andExpect(redirectedUrl("/posts"));
 
-		then(postService).should().delete(1L);
+		then(postService).should().delete(id);
 	}
 
-	private Post samplePost(Long id) {
-		Post post = new Post("테스트", "사용자", "본문");
-		LocalDateTime now = LocalDateTime.now();
+	private Post samplePost(UUID id) {
+		OperatorUser author = new OperatorUser(null, "사용자", "user@example.local", "pw");
+		Post post = new Post("테스트", author, "본문");
+		OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
 		setField("id", post, id);
 		setField("createdAt", post, now);
 		setField("updatedAt", post, now);
