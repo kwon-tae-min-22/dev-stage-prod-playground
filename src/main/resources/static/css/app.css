@@ -177,6 +177,7 @@ label span {
 }
 
 input[type="text"],
+input[type="email"],
 textarea {
 	width: 100%;
 	padding: 10px 12px;

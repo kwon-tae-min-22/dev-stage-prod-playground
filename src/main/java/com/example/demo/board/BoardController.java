@@ -87,7 +87,11 @@ public class BoardController {
 	@GetMapping("/posts/{id}/edit")
 	public String editForm(@PathVariable UUID id, Model model) {
 		Post post = postService.findById(id);
-		model.addAttribute("postForm", new PostForm(post.getTitle(), post.getAuthor(), post.getContent()));
+		String email = null;
+		if (post.getOperatorUser() != null) {
+			email = post.getOperatorUser().getEmail();
+		}
+		model.addAttribute("postForm", new PostForm(post.getTitle(), post.getAuthor(), email, post.getContent()));
 		model.addAttribute("mode", "edit");
 		model.addAttribute("postId", id);
 		return "posts/form";
