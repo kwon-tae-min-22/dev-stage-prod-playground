@@ -45,13 +45,17 @@ public class PostService {
 	}
 
 	public Post create(PostForm form) {
-		OperatorUser operatorUser = resolveAuthor(form.getAuthor(), form.getEmail());
+		OperatorUser operatorUser = resolveAuthor(form.getAuthor());
+		// HANDS-ON: restore when email input is enabled.
+		// OperatorUser operatorUser = resolveAuthor(form.getAuthor(), form.getEmail());
 		Post post = new Post(form.getTitle(), operatorUser, form.getContent());
 		return postMapper.insert(post);
 	}
 
 	public Post update(UUID id, PostForm form) {
-		OperatorUser operatorUser = resolveAuthor(form.getAuthor(), form.getEmail());
+		OperatorUser operatorUser = resolveAuthor(form.getAuthor());
+		// HANDS-ON: restore when email input is enabled.
+		// OperatorUser operatorUser = resolveAuthor(form.getAuthor(), form.getEmail());
 		Post toUpdate = new Post(form.getTitle(), operatorUser, form.getContent());
 		toUpdate.setId(id);
 		Post updated = postMapper.update(toUpdate);
@@ -76,42 +80,57 @@ public class PostService {
 		}
 	}
 
-	private OperatorUser resolveAuthor(String author, String email) {
-		String normalizedEmail = normalizeEmail(email);
+	private OperatorUser resolveAuthor(String author) {
 		OperatorUser existing = operatorUserMapper.selectByUsername(author);
 		if (existing != null) {
-			if (shouldUpdateEmail(existing, normalizedEmail)) {
-				operatorUserMapper.updateEmail(existing.getId(), normalizedEmail);
-				existing.setEmail(normalizedEmail);
-			}
 			return existing;
 		}
-		return operatorUserMapper.insert(buildOperatorUser(author, normalizedEmail));
+		return operatorUserMapper.insert(buildOperatorUser(author));
 	}
 
-	private OperatorUser buildOperatorUser(String author, String email) {
-		String resolvedEmail = (email == null || email.isBlank()) ? generateEmail(author) : email;
+	// HANDS-ON: email-enabled resolveAuthor variant.
+	// private OperatorUser resolveAuthor(String author, String email) {
+	// 	String normalizedEmail = normalizeEmail(email);
+	// 	OperatorUser existing = operatorUserMapper.selectByUsername(author);
+	// 	if (existing != null) {
+	// 		if (shouldUpdateEmail(existing, normalizedEmail)) {
+	// 			operatorUserMapper.updateEmail(existing.getId(), normalizedEmail);
+	// 			existing.setEmail(normalizedEmail);
+	// 		}
+	// 		return existing;
+	// 	}
+	// 	return operatorUserMapper.insert(buildOperatorUser(author, normalizedEmail));
+	// }
+
+	private OperatorUser buildOperatorUser(String author) {
+		String resolvedEmail = generateEmail(author);
 		return new OperatorUser(author, resolvedEmail, "generated-by-board-app");
 	}
 
-	private String normalizeEmail(String email) {
-		if (email == null) {
-			return null;
-		}
-		String trimmed = email.trim();
-		return trimmed.isEmpty() ? null : trimmed;
-	}
-
-	private boolean shouldUpdateEmail(OperatorUser existing, String email) {
-		if (email == null || existing == null) {
-			return false;
-		}
-		if (existing.getId() == null) {
-			return false;
-		}
-		String current = existing.getEmail();
-		return current == null || !current.equals(email);
-	}
+	// HANDS-ON: email-enabled build + helpers.
+	// private OperatorUser buildOperatorUser(String author, String email) {
+	// 	String resolvedEmail = (email == null || email.isBlank()) ? generateEmail(author) : email;
+	// 	return new OperatorUser(author, resolvedEmail, "generated-by-board-app");
+	// }
+	//
+	// private String normalizeEmail(String email) {
+	// 	if (email == null) {
+	// 		return null;
+	// 	}
+	// 	String trimmed = email.trim();
+	// 	return trimmed.isEmpty() ? null : trimmed;
+	// }
+	//
+	// private boolean shouldUpdateEmail(OperatorUser existing, String email) {
+	// 	if (email == null || existing == null) {
+	// 		return false;
+	// 	}
+	// 	if (existing.getId() == null) {
+	// 		return false;
+	// 	}
+	// 	String current = existing.getEmail();
+	// 	return current == null || !current.equals(email);
+	// }
 
 	private String generateEmail(String author) {
 		String normalized = EMAIL_SAFE.matcher(author.trim().toLowerCase()).replaceAll(".");
