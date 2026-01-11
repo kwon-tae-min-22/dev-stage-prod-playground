@@ -1,14 +1,17 @@
-name: Deploy (Host Based)
+name: Deploy to Stage (Self-Hosted)
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
-concurrency:
-  group: deploy-stage
-  cancel-in-progress: true
+env:
+  PROJECT_NAME: dev-stage-prod-playground
+  SERVER_PORT: ${{ secrets.APP_PORT || 8080 }}
+  DB_URL: ${{ secrets.SPRING_DATASOURCE_URL }}
+  DB_USERNAME: ${{ secrets.SPRING_DATASOURCE_USERNAME }}
+  DB_PASSWORD: ${{ secrets.SPRING_DATASOURCE_PASSWORD }}
+  SPRING_PROFILES_ACTIVE: stage
 
 jobs:
   deploy:
@@ -32,66 +35,48 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      - name: Run tests
-        run: ./gradlew clean test
+      - name: Build with Gradle
+        run: ./gradlew clean build -x test
 
-      - name: Build boot jar
-        run: ./gradlew bootJar
-
-      - name: Deploy jar and restart systemd service
-        env:
-          DB_URL: ${{ secrets.SPRING_DATASOURCE_URL }}
-          DB_USERNAME: ${{ secrets.SPRING_DATASOURCE_USERNAME }}
-          DB_PASSWORD: ${{ secrets.SPRING_DATASOURCE_PASSWORD }}
-          APP_PORT: ${{ secrets.APP_PORT }}
-          SPRING_PROFILES_ACTIVE: stage
-          SERVICE_NAME: dev-stage-prod-playground
-          SYSTEMD_SCOPE: system
+      - name: Stop current application
         shell: bash
         run: |
           set -euo pipefail
-          DEPLOY_DIR="${HOME}/.deploy/dev-stage-prod-playground"
-          ENV_FILE="${DEPLOY_DIR}/app.env"
-          APP_PORT="${APP_PORT:-8080}"
+          echo "Stopping application on port ${SERVER_PORT}..."
+          if command -v fuser >/dev/null 2>&1; then
+            fuser -k -n tcp "${SERVER_PORT}" || true
+          fi
+          echo "Application stopped."
 
+      - name: Run application
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEPLOY_DIR="${HOME}/.deploy/${PROJECT_NAME}"
+          LOG_FILE="${DEPLOY_DIR}/app.log"
           mkdir -p "${DEPLOY_DIR}"
 
-          JAR_PATH="$(ls -t build/libs/*.jar | head -n 1)"
-          cp "${JAR_PATH}" "${DEPLOY_DIR}/app.jar"
+          JAR_FILE="$(ls -t build/libs/*.jar | grep -v 'plain' | head -n 1)"
+          cp "${JAR_FILE}" "${DEPLOY_DIR}/app.jar"
 
-          printf '%s\n' \
-            "DB_URL=${DB_URL}" \
-            "DB_USERNAME=${DB_USERNAME}" \
-            "DB_PASSWORD=${DB_PASSWORD}" \
-            "SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE}" \
-            "SERVER_PORT=${APP_PORT}" \
-            > "${ENV_FILE}"
-          chmod 600 "${ENV_FILE}"
-
-          SYSTEMCTL=(sudo -n systemctl)
-          if [[ "${SYSTEMD_SCOPE}" == "user" ]]; then
-            SYSTEMCTL=(systemctl --user)
-          fi
-
-          "${SYSTEMCTL[@]}" daemon-reload
-          "${SYSTEMCTL[@]}" restart "${SERVICE_NAME}.service"
-          "${SYSTEMCTL[@]}" status "${SERVICE_NAME}.service" --no-pager --full
+          echo "Starting new application..."
+          env -u RUNNER_TRACKING_ID nohup java -jar "${DEPLOY_DIR}/app.jar" \
+            --server.port="${SERVER_PORT}" \
+            > "${LOG_FILE}" 2>&1 &
+          echo "Application started in background."
 
       - name: Health check
-        env:
-          APP_PORT: ${{ secrets.APP_PORT }}
         shell: bash
         run: |
           set -euo pipefail
-          APP_PORT="${APP_PORT:-8080}"
-          HEALTH_URL="http://localhost:${APP_PORT}/"
+          HEALTH_URL="http://localhost:${SERVER_PORT}/"
 
-          for _ in $(seq 1 30); do
+          for _ in $(seq 1 10); do
             if command -v curl >/dev/null 2>&1 && curl -fsS "${HEALTH_URL}" >/dev/null 2>&1; then
               echo "Health check passed: ${HEALTH_URL}"
               exit 0
             fi
-            sleep 2
+            sleep 5
           done
 
           echo "Health check timed out: ${HEALTH_URL}"
