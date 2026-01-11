@@ -62,9 +62,9 @@ jobs:
 
       - name: Start app (bootRun)
         env:
-          DB_URL: ${{ secrets.DB_URL }}
-          DB_USERNAME: ${{ secrets.DB_USERNAME }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_URL: ${{ secrets.SPRING_DATASOURCE_URL }}
+          DB_USERNAME: ${{ secrets.SPRING_DATASOURCE_USERNAME }}
+          DB_PASSWORD: ${{ secrets.SPRING_DATASOURCE_PASSWORD }}
           APP_PORT: ${{ secrets.APP_PORT }}
           SPRING_PROFILES_ACTIVE: stage
         shell: bash
