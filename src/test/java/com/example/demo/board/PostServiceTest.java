@@ -6,10 +6,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
+import com.example.demo.board.mapper.OperatorUserMapper;
+import com.example.demo.board.mapper.PostMapper;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,20 +18,16 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.data.domain.Sort;
 import org.springframework.web.server.ResponseStatusException;
 
 @ExtendWith(MockitoExtension.class)
 class PostServiceTest {
 
 	@Mock
-	private PostRepository postRepository;
+	private PostMapper postMapper;
 
 	@Mock
-	private OperatorUserRepository operatorUserRepository;
-
-	@Mock
-	private OperatorRepository operatorRepository;
+	private OperatorUserMapper operatorUserMapper;
 
 	@Mock
 	private JdbcTemplate jdbcTemplate;
@@ -40,35 +37,34 @@ class PostServiceTest {
 
 	@Test
 	void createPostPersistsEntity() {
-		OperatorUser author = new OperatorUser(null, "홍길동", "hong@example.local", "pw");
-		given(operatorUserRepository.findByUsername("홍길동")).willReturn(Optional.of(author));
+		OperatorUser author = new OperatorUser("홍길동", "hong@example.local", "pw");
+		given(operatorUserMapper.selectByUsername("홍길동")).willReturn(author);
 
 		UUID id = UUID.randomUUID();
 		Post persisted = new Post("첫 게시글", author, "내용입니다");
 		setField(persisted, "id", id);
 		setTimestamps(persisted);
-		given(postRepository.save(any(Post.class))).willReturn(persisted);
+		given(postMapper.insert(any(Post.class))).willReturn(persisted);
 
 		Post saved = postService.create(new PostForm("첫 게시글", "홍길동", "내용입니다"));
 
 		assertThat(saved.getId()).isEqualTo(id);
 		assertThat(saved.getAuthor()).isEqualTo("홍길동");
-		verify(postRepository).save(any(Post.class));
+		verify(postMapper).insert(any(Post.class));
 	}
 
 	@Test
 	void findAllReturnsLatestFirst() {
 		Post newest = samplePost("new");
 		Post older = samplePost("old");
-		Sort expectedSort = Sort.by(Sort.Direction.DESC, "createdAt");
-		given(postRepository.findAll(expectedSort)).willReturn(List.of(newest, older));
+		given(postMapper.selectAll()).willReturn(List.of(newest, older));
 		given(jdbcTemplate.queryForObject("SELECT 1", Integer.class)).willReturn(1);
 
 		List<Post> posts = postService.findAll();
 
 		assertThat(posts).hasSize(2);
 		assertThat(posts.get(0).getTitle()).isEqualTo("new");
-		verify(postRepository).findAll(expectedSort);
+		verify(postMapper).selectAll();
 		verify(jdbcTemplate).queryForObject("SELECT 1", Integer.class);
 	}
 
@@ -76,38 +72,41 @@ class PostServiceTest {
 	void updateChangesFields() {
 		Post existing = samplePost("제목");
 		UUID id = existing.getId();
-		given(postRepository.findById(id)).willReturn(Optional.of(existing));
-		OperatorUser newAuthor = new OperatorUser(null, "다른 작성자", "other@example.local", "pw");
-		given(operatorUserRepository.findByUsername("다른 작성자")).willReturn(Optional.of(newAuthor));
+		OperatorUser newAuthor = new OperatorUser("다른 작성자", "other@example.local", "pw");
+		given(operatorUserMapper.selectByUsername("다른 작성자")).willReturn(newAuthor);
+		Post updated = new Post("새 제목", newAuthor, "새 내용");
+		setField(updated, "id", id);
+		setTimestamps(updated);
+		given(postMapper.update(any(Post.class))).willReturn(updated);
 
-		postService.update(id, new PostForm("새 제목", "다른 작성자", "새 내용"));
+		Post result = postService.update(id, new PostForm("새 제목", "다른 작성자", "새 내용"));
 
-		assertThat(existing.getTitle()).isEqualTo("새 제목");
-		assertThat(existing.getAuthor()).isEqualTo("다른 작성자");
-		assertThat(existing.getContent()).isEqualTo("새 내용");
+		assertThat(result.getTitle()).isEqualTo("새 제목");
+		assertThat(result.getAuthor()).isEqualTo("다른 작성자");
+		assertThat(result.getContent()).isEqualTo("새 내용");
 	}
 
 	@Test
 	void deleteRemovesPost() {
 		Post existing = samplePost("삭제");
-		given(postRepository.findById(existing.getId())).willReturn(Optional.of(existing));
+		given(postMapper.delete(existing.getId())).willReturn(1);
 
 		postService.delete(existing.getId());
 
-		verify(postRepository).delete(existing);
+		verify(postMapper).delete(existing.getId());
 	}
 
 	@Test
 	void findByIdThrowsWhenMissing() {
 		UUID missing = UUID.randomUUID();
-		given(postRepository.findById(missing)).willReturn(Optional.empty());
+		given(postMapper.selectById(missing)).willReturn(null);
 
 		assertThatThrownBy(() -> postService.findById(missing))
 			.isInstanceOf(ResponseStatusException.class);
 	}
 
 	private Post samplePost(String title) {
-		OperatorUser author = new OperatorUser(null, "작성자", "author@example.local", "pw");
+		OperatorUser author = new OperatorUser("작성자", "author@example.local", "pw");
 		Post post = new Post(title, author, "내용");
 		setField(post, "id", UUID.randomUUID());
 		setTimestamps(post);

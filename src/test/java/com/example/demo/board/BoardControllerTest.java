@@ -100,7 +100,7 @@ class BoardControllerTest {
 	}
 
 	private Post samplePost(UUID id) {
-		OperatorUser author = new OperatorUser(null, "사용자", "user@example.local", "pw");
+		OperatorUser author = new OperatorUser("사용자", "user@example.local", "pw");
 		Post post = new Post("테스트", author, "본문");
 		OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
 		setField("id", post, id);

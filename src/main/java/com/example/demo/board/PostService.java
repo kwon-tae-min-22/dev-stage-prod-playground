@@ -1,10 +1,11 @@
 package com.example.demo.board;
 
+import com.example.demo.board.mapper.OperatorUserMapper;
+import com.example.demo.board.mapper.PostMapper;
 import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import org.springframework.dao.DataAccessException;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -15,50 +16,56 @@ import org.springframework.web.server.ResponseStatusException;
 @Transactional
 public class PostService {
 
-	private final PostRepository postRepository;
-	private final OperatorUserRepository operatorUserRepository;
-	private final OperatorRepository operatorRepository;
+	private final PostMapper postMapper;
+	private final OperatorUserMapper operatorUserMapper;
 	private final JdbcTemplate jdbcTemplate;
 	private static final Pattern EMAIL_SAFE = Pattern.compile("[^a-zA-Z0-9]");
 
-	public PostService(PostRepository postRepository,
-		OperatorUserRepository operatorUserRepository,
-		OperatorRepository operatorRepository,
+	public PostService(PostMapper postMapper,
+		OperatorUserMapper operatorUserMapper,
 		JdbcTemplate jdbcTemplate) {
-		this.postRepository = postRepository;
-		this.operatorUserRepository = operatorUserRepository;
-		this.operatorRepository = operatorRepository;
+		this.postMapper = postMapper;
+		this.operatorUserMapper = operatorUserMapper;
 		this.jdbcTemplate = jdbcTemplate;
 	}
 
 	@Transactional(readOnly = true)
 	public List<Post> findAll() {
 		verifyDbConnection();
-		return postRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
+		return postMapper.selectAll();
 	}
 
 	@Transactional(readOnly = true)
 	public Post findById(UUID id) {
-		return postRepository.findById(id)
-			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."));
+		Post post = postMapper.selectById(id);
+		if (post == null) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다.");
+		}
+		return post;
 	}
 
 	public Post create(PostForm form) {
 		OperatorUser operatorUser = resolveAuthor(form.getAuthor());
 		Post post = new Post(form.getTitle(), operatorUser, form.getContent());
-		return postRepository.save(post);
+		return postMapper.insert(post);
 	}
 
 	public Post update(UUID id, PostForm form) {
-		Post post = findById(id);
 		OperatorUser operatorUser = resolveAuthor(form.getAuthor());
-		post.update(form.getTitle(), operatorUser, form.getContent());
-		return post;
+		Post toUpdate = new Post(form.getTitle(), operatorUser, form.getContent());
+		toUpdate.setId(id);
+		Post updated = postMapper.update(toUpdate);
+		if (updated == null) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다.");
+		}
+		return updated;
 	}
 
 	public void delete(UUID id) {
-		Post post = findById(id);
-		postRepository.delete(post);
+		int deleted = postMapper.delete(id);
+		if (deleted == 0) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다.");
+		}
 	}
 
 	private void verifyDbConnection() {
@@ -70,8 +77,11 @@ public class PostService {
 	}
 
 	private OperatorUser resolveAuthor(String author) {
-		return operatorUserRepository.findByUsername(author)
-			.orElseGet(() -> operatorUserRepository.save(buildOperatorUser(author)));
+		OperatorUser existing = operatorUserMapper.selectByUsername(author);
+		if (existing != null) {
+			return existing;
+		}
+		return operatorUserMapper.insert(buildOperatorUser(author));
 	}
 
 	private OperatorUser buildOperatorUser(String author) {
@@ -83,7 +93,6 @@ public class PostService {
 		}
 		String email = localPart + "+board-" + suffix + "@example.local";
 
-		Operator operator = operatorRepository.findTopByOrderByCreatedAtAsc().orElse(null);
-		return new OperatorUser(operator, author, email, "generated-by-board-app");
+		return new OperatorUser(author, email, "generated-by-board-app");
 	}
 }

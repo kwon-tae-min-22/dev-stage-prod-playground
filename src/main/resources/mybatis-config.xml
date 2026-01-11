@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+  <settings>
+    <setting name="mapUnderscoreToCamelCase" value="true"/>
+  </settings>
+
+  <typeHandlers>
+    <typeHandler handler="com.example.demo.mybatis.UuidTypeHandler"/>
+  </typeHandlers>
+
+  <mappers>
+    <mapper resource="mappers/board/PostMapper.xml"/>
+    <mapper resource="mappers/board/OperatorUserMapper.xml"/>
+  </mappers>
+</configuration>

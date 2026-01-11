@@ -1,0 +1,101 @@
+name: Deploy (Host Based)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-stage
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on:
+      - self-hosted
+      - stage
+    environment: stage
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: gradle
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      - name: Run tests
+        run: ./gradlew clean test
+
+      - name: Stop running app
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEPLOY_DIR="${HOME}/.deploy/dev-stage-prod-playground"
+          PID_FILE="${DEPLOY_DIR}/app.pid"
+          mkdir -p "${DEPLOY_DIR}"
+
+          if [[ -f "${PID_FILE}" ]]; then
+            PID="$(cat "${PID_FILE}")"
+            if ps -p "${PID}" >/dev/null 2>&1; then
+              kill "${PID}"
+              for _ in $(seq 1 30); do
+                if ! ps -p "${PID}" >/dev/null 2>&1; then
+                  break
+                fi
+                sleep 1
+              done
+              if ps -p "${PID}" >/dev/null 2>&1; then
+                kill -9 "${PID}"
+              fi
+            fi
+            rm -f "${PID_FILE}"
+          fi
+
+      - name: Start app (bootRun)
+        env:
+          DB_URL: ${{ secrets.DB_URL }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          APP_PORT: ${{ secrets.APP_PORT }}
+          SPRING_PROFILES_ACTIVE: stage
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEPLOY_DIR="${HOME}/.deploy/dev-stage-prod-playground"
+          LOG_FILE="${DEPLOY_DIR}/app.log"
+          PID_FILE="${DEPLOY_DIR}/app.pid"
+          APP_PORT="${APP_PORT:-8080}"
+
+          export SERVER_PORT="${APP_PORT}"
+          nohup ./gradlew --no-daemon bootRun > "${LOG_FILE}" 2>&1 &
+          echo $! > "${PID_FILE}"
+          sleep 3
+
+      - name: Health check
+        env:
+          APP_PORT: ${{ secrets.APP_PORT }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_PORT="${APP_PORT:-8080}"
+          HEALTH_URL="http://localhost:${APP_PORT}/"
+
+          for _ in $(seq 1 30); do
+            if command -v curl >/dev/null 2>&1 && curl -fsS "${HEALTH_URL}" >/dev/null 2>&1; then
+              echo "Health check passed: ${HEALTH_URL}"
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "Health check timed out: ${HEALTH_URL}"
+          exit 1
