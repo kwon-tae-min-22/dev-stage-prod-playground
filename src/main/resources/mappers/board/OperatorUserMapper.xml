@@ -41,4 +41,12 @@
 		)
 		RETURNING id, username, email, password_hash, created_at, updated_at
 	</select>
+
+	<update id="updateEmail">
+		UPDATE operator_user
+		SET
+			email = #{email},
+			updated_at = now()
+		WHERE id = #{id}
+	</update>
 </mapper>

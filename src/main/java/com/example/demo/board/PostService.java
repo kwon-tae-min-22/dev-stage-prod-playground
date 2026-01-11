@@ -45,13 +45,13 @@ public class PostService {
 	}
 
 	public Post create(PostForm form) {
-		OperatorUser operatorUser = resolveAuthor(form.getAuthor());
+		OperatorUser operatorUser = resolveAuthor(form.getAuthor(), form.getEmail());
 		Post post = new Post(form.getTitle(), operatorUser, form.getContent());
 		return postMapper.insert(post);
 	}
 
 	public Post update(UUID id, PostForm form) {
-		OperatorUser operatorUser = resolveAuthor(form.getAuthor());
+		OperatorUser operatorUser = resolveAuthor(form.getAuthor(), form.getEmail());
 		Post toUpdate = new Post(form.getTitle(), operatorUser, form.getContent());
 		toUpdate.setId(id);
 		Post updated = postMapper.update(toUpdate);
@@ -76,23 +76,50 @@ public class PostService {
 		}
 	}
 
-	private OperatorUser resolveAuthor(String author) {
+	private OperatorUser resolveAuthor(String author, String email) {
+		String normalizedEmail = normalizeEmail(email);
 		OperatorUser existing = operatorUserMapper.selectByUsername(author);
 		if (existing != null) {
+			if (shouldUpdateEmail(existing, normalizedEmail)) {
+				operatorUserMapper.updateEmail(existing.getId(), normalizedEmail);
+				existing.setEmail(normalizedEmail);
+			}
 			return existing;
 		}
-		return operatorUserMapper.insert(buildOperatorUser(author));
+		return operatorUserMapper.insert(buildOperatorUser(author, normalizedEmail));
 	}
 
-	private OperatorUser buildOperatorUser(String author) {
+	private OperatorUser buildOperatorUser(String author, String email) {
+		String resolvedEmail = (email == null || email.isBlank()) ? generateEmail(author) : email;
+		return new OperatorUser(author, resolvedEmail, "generated-by-board-app");
+	}
+
+	private String normalizeEmail(String email) {
+		if (email == null) {
+			return null;
+		}
+		String trimmed = email.trim();
+		return trimmed.isEmpty() ? null : trimmed;
+	}
+
+	private boolean shouldUpdateEmail(OperatorUser existing, String email) {
+		if (email == null || existing == null) {
+			return false;
+		}
+		if (existing.getId() == null) {
+			return false;
+		}
+		String current = existing.getEmail();
+		return current == null || !current.equals(email);
+	}
+
+	private String generateEmail(String author) {
 		String normalized = EMAIL_SAFE.matcher(author.trim().toLowerCase()).replaceAll(".");
 		String suffix = UUID.randomUUID().toString().substring(0, 8);
 		String localPart = (normalized.isEmpty() ? "user" : normalized);
 		if (localPart.length() > 40) {
 			localPart = localPart.substring(0, 40);
 		}
-		String email = localPart + "+board-" + suffix + "@example.local";
-
-		return new OperatorUser(author, email, "generated-by-board-app");
+		return localPart + "+board-" + suffix + "@example.local";
 	}
 }

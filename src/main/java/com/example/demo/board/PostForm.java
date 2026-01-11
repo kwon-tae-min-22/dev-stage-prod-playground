@@ -1,6 +1,7 @@
 package com.example.demo.board;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
 
 public class PostForm {
@@ -13,15 +14,21 @@ public class PostForm {
 	@Size(max = 50, message = "작성자 이름은 최대 50자까지 가능합니다.")
 	private String author;
 
+	@NotBlank(message = "이메일을 입력해주세요.")
+	@Email(message = "이메일 형식이 올바르지 않습니다.")
+	@Size(max = 255, message = "이메일은 최대 255자까지 가능합니다.")
+	private String email;
+
 	@NotBlank(message = "내용을 입력해주세요.")
 	private String content;
 
 	public PostForm() {
 	}
 
-	public PostForm(String title, String author, String content) {
+	public PostForm(String title, String author, String email, String content) {
 		this.title = title;
 		this.author = author;
+		this.email = email;
 		this.content = content;
 	}
 
@@ -39,6 +46,14 @@ public class PostForm {
 
 	public void setAuthor(String author) {
 		this.author = author;
+	}
+
+	public String getEmail() {
+		return email;
+	}
+
+	public void setEmail(String email) {
+		this.email = email;
 	}
 
 	public String getContent() {
