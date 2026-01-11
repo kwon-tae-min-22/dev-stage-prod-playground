@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
+import static org.mockito.BDDMockito.then;
 
 import com.example.demo.board.mapper.OperatorUserMapper;
 import com.example.demo.board.mapper.PostMapper;
@@ -14,25 +14,28 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.util.ReflectionUtils;
 import org.springframework.web.server.ResponseStatusException;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith(SpringExtension.class)
+@ContextConfiguration(classes = PostService.class)
 class PostServiceTest {
 
-	@Mock
+	@MockitoBean
 	private PostMapper postMapper;
 
-	@Mock
+	@MockitoBean
 	private OperatorUserMapper operatorUserMapper;
 
-	@Mock
+	@MockitoBean
 	private JdbcTemplate jdbcTemplate;
 
-	@InjectMocks
+	@Autowired
 	private PostService postService;
 
 	@Test
@@ -46,11 +49,11 @@ class PostServiceTest {
 		setTimestamps(persisted);
 		given(postMapper.insert(any(Post.class))).willReturn(persisted);
 
-		Post saved = postService.create(new PostForm("첫 게시글", "홍길동", "내용입니다"));
+	Post saved = postService.create(new PostForm("첫 게시글", "홍길동", "내용입니다"));
 
-		assertThat(saved.getId()).isEqualTo(id);
-		assertThat(saved.getAuthor()).isEqualTo("홍길동");
-		verify(postMapper).insert(any(Post.class));
+	assertThat(saved.getId()).isEqualTo(id);
+	assertThat(saved.getAuthor()).isEqualTo("홍길동");
+	then(postMapper).should().insert(any(Post.class));
 	}
 
 	@Test
@@ -62,10 +65,10 @@ class PostServiceTest {
 
 		List<Post> posts = postService.findAll();
 
-		assertThat(posts).hasSize(2);
-		assertThat(posts.get(0).getTitle()).isEqualTo("new");
-		verify(postMapper).selectAll();
-		verify(jdbcTemplate).queryForObject("SELECT 1", Integer.class);
+	assertThat(posts).hasSize(2);
+	assertThat(posts.get(0).getTitle()).isEqualTo("new");
+	then(postMapper).should().selectAll();
+	then(jdbcTemplate).should().queryForObject("SELECT 1", Integer.class);
 	}
 
 	@Test
@@ -91,9 +94,9 @@ class PostServiceTest {
 		Post existing = samplePost("삭제");
 		given(postMapper.delete(existing.getId())).willReturn(1);
 
-		postService.delete(existing.getId());
+	postService.delete(existing.getId());
 
-		verify(postMapper).delete(existing.getId());
+	then(postMapper).should().delete(existing.getId());
 	}
 
 	@Test
@@ -120,12 +123,8 @@ class PostServiceTest {
 	}
 
 	private void setField(Object target, String fieldName, Object value) {
-		try {
-			var field = target.getClass().getDeclaredField(fieldName);
-			field.setAccessible(true);
-			field.set(target, value);
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		}
+		var field = ReflectionUtils.findField(target.getClass(), fieldName);
+		ReflectionUtils.makeAccessible(field);
+		ReflectionUtils.setField(field, target, value);
 	}
 }
