@@ -14,6 +14,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
+import com.example.demo.board.mapper.OperatorUserMapper;
+import com.example.demo.board.mapper.PostMapper;
+import com.example.demo.config.SecurityConfig;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -21,13 +24,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.util.ReflectionUtils;
-import org.springframework.context.annotation.Bean;
-import org.mockito.Mockito;
-import com.example.demo.config.SecurityConfig;
 
 @WebMvcTest(BoardController.class)
 @Import(SecurityConfig.class)
@@ -36,8 +36,14 @@ class BoardControllerTest {
 	@Autowired
 	private MockMvc mockMvc;
 
-	@Autowired
+	@MockitoBean
 	private PostService postService;
+
+	@MockitoBean
+	private PostMapper postMapper;
+
+	@MockitoBean
+	private OperatorUserMapper operatorUserMapper;
 
 	@Test
 	void listRendersPostsTemplate() throws Exception {
@@ -113,13 +119,5 @@ class BoardControllerTest {
 		var field = ReflectionUtils.findField(Post.class, fieldName);
 		ReflectionUtils.makeAccessible(field);
 		ReflectionUtils.setField(field, target, value);
-	}
-
-	@TestConfiguration
-	static class MockBeans {
-		@Bean
-		PostService postService() {
-			return Mockito.mock(PostService.class);
-		}
 	}
 }
