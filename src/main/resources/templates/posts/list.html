@@ -24,18 +24,20 @@
 			<tr>
 				<th>제목</th>
 				<th>작성자</th>
+				<th>이메일</th>
 				<th>작성일</th>
 			</tr>
 			</thead>
 			<tbody>
 			<tr th:if="${#lists.isEmpty(posts)}">
-				<td colspan="3" class="empty">등록된 게시글이 없습니다.</td>
+				<td colspan="4" class="empty">등록된 게시글이 없습니다.</td>
 			</tr>
 			<tr th:each="post : ${posts}">
 				<td>
 					<a th:href="@{|/posts/${post.id}|}" th:text="${post.title}"></a>
 				</td>
 				<td th:text="${post.author}"></td>
+				<td th:text="${post.operatorUser != null ? post.operatorUser.email : '-'}"></td>
 				<td th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm')}"></td>
 			</tr>
 			</tbody>
