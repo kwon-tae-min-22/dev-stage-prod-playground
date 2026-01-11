@@ -35,50 +35,47 @@ jobs:
       - name: Run tests
         run: ./gradlew clean test
 
-      - name: Stop running app
-        shell: bash
-        run: |
-          set -euo pipefail
-          DEPLOY_DIR="${HOME}/.deploy/dev-stage-prod-playground"
-          PID_FILE="${DEPLOY_DIR}/app.pid"
-          mkdir -p "${DEPLOY_DIR}"
+      - name: Build boot jar
+        run: ./gradlew bootJar
 
-          if [[ -f "${PID_FILE}" ]]; then
-            PID="$(cat "${PID_FILE}")"
-            if ps -p "${PID}" >/dev/null 2>&1; then
-              kill "${PID}"
-              for _ in $(seq 1 30); do
-                if ! ps -p "${PID}" >/dev/null 2>&1; then
-                  break
-                fi
-                sleep 1
-              done
-              if ps -p "${PID}" >/dev/null 2>&1; then
-                kill -9 "${PID}"
-              fi
-            fi
-            rm -f "${PID_FILE}"
-          fi
-
-      - name: Start app (bootRun)
+      - name: Deploy jar and restart systemd service
         env:
           DB_URL: ${{ secrets.SPRING_DATASOURCE_URL }}
           DB_USERNAME: ${{ secrets.SPRING_DATASOURCE_USERNAME }}
           DB_PASSWORD: ${{ secrets.SPRING_DATASOURCE_PASSWORD }}
           APP_PORT: ${{ secrets.APP_PORT }}
           SPRING_PROFILES_ACTIVE: stage
+          SERVICE_NAME: dev-stage-prod-playground
+          SYSTEMD_SCOPE: system
         shell: bash
         run: |
           set -euo pipefail
           DEPLOY_DIR="${HOME}/.deploy/dev-stage-prod-playground"
-          LOG_FILE="${DEPLOY_DIR}/app.log"
-          PID_FILE="${DEPLOY_DIR}/app.pid"
+          ENV_FILE="${DEPLOY_DIR}/app.env"
           APP_PORT="${APP_PORT:-8080}"
 
-          export SERVER_PORT="${APP_PORT}"
-          nohup ./gradlew --no-daemon bootRun > "${LOG_FILE}" 2>&1 &
-          echo $! > "${PID_FILE}"
-          sleep 3
+          mkdir -p "${DEPLOY_DIR}"
+
+          JAR_PATH="$(ls -t build/libs/*.jar | head -n 1)"
+          cp "${JAR_PATH}" "${DEPLOY_DIR}/app.jar"
+
+          printf '%s\n' \
+            "DB_URL=${DB_URL}" \
+            "DB_USERNAME=${DB_USERNAME}" \
+            "DB_PASSWORD=${DB_PASSWORD}" \
+            "SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE}" \
+            "SERVER_PORT=${APP_PORT}" \
+            > "${ENV_FILE}"
+          chmod 600 "${ENV_FILE}"
+
+          SYSTEMCTL=(sudo -n systemctl)
+          if [[ "${SYSTEMD_SCOPE}" == "user" ]]; then
+            SYSTEMCTL=(systemctl --user)
+          fi
+
+          "${SYSTEMCTL[@]}" daemon-reload
+          "${SYSTEMCTL[@]}" restart "${SERVICE_NAME}.service"
+          "${SYSTEMCTL[@]}" status "${SERVICE_NAME}.service" --no-pager --full
 
       - name: Health check
         env:
