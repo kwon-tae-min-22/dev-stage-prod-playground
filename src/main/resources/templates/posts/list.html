@@ -24,7 +24,8 @@
 			<tr>
 				<th>제목</th>
 				<th>작성자</th>
-				<th>이메일</th>
+				<!-- HANDS-ON: -->
+<!--				<th>이메일</th>-->
 				<th>작성일</th>
 			</tr>
 			</thead>
@@ -37,7 +38,8 @@
 					<a th:href="@{|/posts/${post.id}|}" th:text="${post.title}"></a>
 				</td>
 				<td th:text="${post.author}"></td>
-				<td th:text="${post.operatorUser != null ? post.operatorUser.email : '-'}"></td>
+				<!-- HANDS-ON: -->
+<!--				<td th:text="${post.operatorUser != null ? post.operatorUser.email : '-'}"></td>-->
 				<td th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm')}"></td>
 			</tr>
 			</tbody>

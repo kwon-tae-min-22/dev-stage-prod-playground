@@ -49,7 +49,9 @@ class PostServiceTest {
 		setTimestamps(persisted);
 		given(postMapper.insert(any(Post.class))).willReturn(persisted);
 
-		Post saved = postService.create(new PostForm("첫 게시글", "홍길동", "hong@example.local", "내용입니다"));
+		Post saved = postService.create(new PostForm("첫 게시글", "홍길동", "내용입니다"));
+		// HANDS-ON: restore when email input is enabled.
+		// Post saved = postService.create(new PostForm("첫 게시글", "홍길동", "hong@example.local", "내용입니다"));
 
 		assertThat(saved.getId()).isEqualTo(id);
 		assertThat(saved.getAuthor()).isEqualTo("홍길동");
@@ -82,7 +84,9 @@ class PostServiceTest {
 		setTimestamps(updated);
 		given(postMapper.update(any(Post.class))).willReturn(updated);
 
-		Post result = postService.update(id, new PostForm("새 제목", "다른 작성자", "other@example.local", "새 내용"));
+		Post result = postService.update(id, new PostForm("새 제목", "다른 작성자", "새 내용"));
+		// HANDS-ON: restore when email input is enabled.
+		// Post result = postService.update(id, new PostForm("새 제목", "다른 작성자", "other@example.local", "새 내용"));
 
 		assertThat(result.getTitle()).isEqualTo("새 제목");
 		assertThat(result.getAuthor()).isEqualTo("다른 작성자");
