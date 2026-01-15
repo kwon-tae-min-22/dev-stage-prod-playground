@@ -33,13 +33,11 @@
 				<small class="error" th:if="${#fields.hasErrors('author')}" th:errors="*{author}">작성자 오류</small>
 			</label>
 
-			<!-- HANDS-ON: email input temporarily disabled.
 			<label>
 				<span>이메일</span>
 				<input type="email" th:field="*{email}" placeholder="email@example.com">
 				<small class="error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}">이메일 오류</small>
 			</label>
-			-->
 
 			<label>
 				<span>내용</span>
