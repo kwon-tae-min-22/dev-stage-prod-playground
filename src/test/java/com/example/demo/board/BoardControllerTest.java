@@ -74,7 +74,7 @@ class BoardControllerTest {
 		mockMvc.perform(post("/posts")
 				.param("title", "제목")
 				.param("author", "작성자")
-				.param("email", "author@example.local")
+				// .param("email", "author@example.local")
 				.param("content", "내용")
 				.with(csrf()))
 			.andExpect(status().is3xxRedirection())
@@ -84,8 +84,13 @@ class BoardControllerTest {
 		then(postService).should().create(argThat(form ->
 			"제목".equals(form.getTitle()) &&
 				"작성자".equals(form.getAuthor()) &&
-				"author@example.local".equals(form.getEmail()) &&
 				"내용".equals(form.getContent())));
+		// HANDS-ON: restore when email input is enabled.
+		// then(postService).should().create(argThat(form ->
+		// 	"제목".equals(form.getTitle()) &&
+		// 		"작성자".equals(form.getAuthor()) &&
+		// 		"author@example.local".equals(form.getEmail()) &&
+		// 		"내용".equals(form.getContent())));
 	}
 
 	@Test
@@ -93,7 +98,9 @@ class BoardControllerTest {
 		mockMvc.perform(post("/posts").with(csrf()))
 			.andExpect(status().isOk())
 			.andExpect(view().name("posts/form"))
-			.andExpect(model().attributeHasFieldErrors("postForm", "title", "author", "email", "content"));
+			.andExpect(model().attributeHasFieldErrors("postForm", "title", "author", "content"));
+		// HANDS-ON: restore when email input is enabled.
+		// .andExpect(model().attributeHasFieldErrors("postForm", "title", "author", "email", "content"));
 	}
 
 	@Test
