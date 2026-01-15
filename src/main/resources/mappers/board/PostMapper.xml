@@ -37,7 +37,7 @@
 			ou.updated_at AS operator_user_updated_at
 		FROM board b
 		LEFT JOIN operator_user ou ON b.operator_user_id = ou.id
-		ORDER BY b.updated_at DESC
+		ORDER BY ou.username ASC
 	</select>
 
 	<select id="selectById" resultMap="postMap">
